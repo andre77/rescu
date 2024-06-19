@@ -22,31 +22,30 @@
  */
 package si.mazi.rescu;
 
-import oauth.signpost.OAuthConsumer;
-import oauth.signpost.exception.OAuthException;
-import oauth.signpost.http.HttpRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import si.mazi.rescu.oauth.RescuOAuthRequestAdapter;
-import si.mazi.rescu.utils.HttpUtils;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSocketFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import oauth.signpost.OAuthConsumer;
+import si.mazi.rescu.clients.ApacheConnection;
+import si.mazi.rescu.clients.HttpConnectionType;
+import si.mazi.rescu.clients.JavaConnection;
+import si.mazi.rescu.clients.HttpConnection;
+import si.mazi.rescu.utils.HttpUtils;
 
 /**
  * Various HTTP utility methods
@@ -79,19 +78,22 @@ class HttpTemplate {
     private final SSLSocketFactory sslSocketFactory;
     private final HostnameVerifier hostnameVerifier;
     private final OAuthConsumer oAuthConsumer;
+    
+    private final HttpConnectionType connectionType;
 
     HttpTemplate(int readTimeout, String proxyHost, Integer proxyPort, Proxy.Type proxyType,
-                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer) {
-      this(0, readTimeout, proxyHost, proxyPort, proxyType, sslSocketFactory, hostnameVerifier, oAuthConsumer);
+                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer, HttpConnectionType client) {
+      this(0, readTimeout, proxyHost, proxyPort, proxyType, sslSocketFactory, hostnameVerifier, oAuthConsumer, client);
     }
 
     HttpTemplate(int connTimeout, int readTimeout, String proxyHost, Integer proxyPort, Proxy.Type proxyType,
-                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer) {
+                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer, HttpConnectionType connectionType) {
         this.connTimeout = connTimeout;
         this.readTimeout = readTimeout;
         this.sslSocketFactory = sslSocketFactory;
         this.hostnameVerifier = hostnameVerifier;
         this.oAuthConsumer = oAuthConsumer;
+        this.connectionType = connectionType;
 
         defaultHttpHeaders.put("Accept-Charset", CHARSET_UTF_8);
         // defaultHttpHeaders.put("Content-Type", "application/x-www-form-urlencoded");
@@ -108,7 +110,7 @@ class HttpTemplate {
         }
     }
 
-    HttpURLConnection send(String urlString, String requestBody, Map<String, String> httpHeaders, HttpMethod method) throws IOException {
+    HttpConnection send(String urlString, String requestBody, Map<String, String> httpHeaders, HttpMethod method) throws IOException {
         if (requestBody != null && requestBody.length() > 0) {
             log.debug("Executing {} request at {}  body \n{}", method, urlString, truncate(requestBody, requestMaxLogLen));
         } else {
@@ -120,9 +122,11 @@ class HttpTemplate {
         preconditionNotNull(httpHeaders, "httpHeaders should not be null");
 
         int contentLength = requestBody == null ? 0 : requestBody.getBytes().length;
-        HttpURLConnection connection = configureURLConnection(method, urlString, httpHeaders, contentLength);
+        HttpConnection connection = configureURLConnection(method, urlString, httpHeaders, contentLength);
 
         if (oAuthConsumer != null) {
+            throw new RuntimeException("OAuth not supported yet");
+            /*
             HttpRequest request = new RescuOAuthRequestAdapter(connection, requestBody);
 
             try {
@@ -130,6 +134,7 @@ class HttpTemplate {
             } catch (OAuthException e) {
                 throw new RuntimeException("OAuth error", e);
             }
+            */
         }
 
         if (contentLength > 0) {
@@ -141,7 +146,7 @@ class HttpTemplate {
         return connection;
     }
 
-    InvocationResult receive(HttpURLConnection connection) throws IOException {
+    InvocationResult receive(HttpConnection connection) throws IOException {
         int httpStatus = connection.getResponseCode();
         log.debug("Request http status = {}", httpStatus);
         if (log.isTraceEnabled()) {
@@ -169,24 +174,24 @@ class HttpTemplate {
      * @param urlString     A string representation of a URL
      * @param httpHeaders   The HTTP headers (will override the defaults)
      * @param contentLength The Content-Length request property
-     * @return An HttpURLConnection based on the given parameters
+     * @return An RescuHttpURLConnection based on the given parameters
      * @throws IOException If something goes wrong
      */
-    private HttpURLConnection configureURLConnection(HttpMethod method, String urlString, Map<String, String> httpHeaders, int contentLength) throws IOException {
+    private HttpConnection configureURLConnection(HttpMethod method, String urlString, Map<String, String> httpHeaders, int contentLength) throws IOException {
 
         preconditionNotNull(method, "method cannot be null");
         preconditionNotNull(urlString, "urlString cannot be null");
         preconditionNotNull(httpHeaders, "httpHeaders cannot be null");
 
-        HttpURLConnection connection = getHttpURLConnection(urlString);
-        connection.setRequestMethod(method.name());
+        HttpConnection connection = getRescuHttpURLConnection(urlString);
+        connection.setRequestMethod(method);
 
         Map<String, String> headerKeyValues = new HashMap<>(defaultHttpHeaders);
 
         headerKeyValues.putAll(httpHeaders);
 
         for (Map.Entry<String, String> entry : headerKeyValues.entrySet()) {
-            connection.setRequestProperty(entry.getKey(), entry.getValue());
+            connection.addHeader(entry.getKey(), entry.getValue());
             log.trace("Header request property: key='{}', value='{}'", entry.getKey(), entry.getValue());
         }
 
@@ -195,14 +200,22 @@ class HttpTemplate {
             connection.setDoOutput(true);
             connection.setDoInput(true);
         }
-        connection.setRequestProperty("Content-Length", Integer.toString(contentLength));
+        connection.addHeader("Content-Length", Integer.toString(contentLength));
 
         return connection;
     }
 
-    protected HttpURLConnection getHttpURLConnection(String urlString) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection(proxy);
-
+    protected HttpConnection getRescuHttpURLConnection(String urlString) throws IOException {
+        
+        //RescuHttpURLConnection connection = (RescuHttpURLConnection) new URL(urlString).openConnection(proxy);
+        
+        HttpConnection connection = null;
+        switch (connectionType) {
+            case java: connection = JavaConnection.create(urlString, proxy); break;
+            case apache: connection = ApacheConnection.create(urlString, proxy); break;
+            default: throw new RuntimeException("Not supported connection type " + connectionType);
+        }
+       
         if (readTimeout > 0) {
             connection.setReadTimeout(readTimeout);
         }
@@ -210,15 +223,12 @@ class HttpTemplate {
           connection.setConnectTimeout(connTimeout);
         }
 
-        if (connection instanceof HttpsURLConnection) {
-            HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
-
+        if (connection.ssl()) {
             if (sslSocketFactory != null) {
-                httpsConnection.setSSLSocketFactory(sslSocketFactory);
+                connection.setSSLSocketFactory(sslSocketFactory);
             }
-
             if (hostnameVerifier != null) {
-                httpsConnection.setHostnameVerifier(hostnameVerifier);
+                connection.setHostnameVerifier(hostnameVerifier);
             }
         }
 
@@ -235,7 +245,7 @@ class HttpTemplate {
      * @return A String representation of the input stream
      * @throws IOException If something goes wrong
      */
-    String readInputStreamAsEncodedString(InputStream inputStream, HttpURLConnection connection) throws IOException {
+    String readInputStreamAsEncodedString(InputStream inputStream, HttpConnection connection) throws IOException {
         if (inputStream == null) {
             return null;
         }
@@ -265,30 +275,8 @@ class HttpTemplate {
         }
     }
 
-    boolean izGzipped(HttpURLConnection connection) {
+    boolean izGzipped(HttpConnection connection) {
         return "gzip".equalsIgnoreCase(connection.getHeaderField("Content-Encoding"));
-    }
-
-    /**
-     * Determine the response encoding if specified
-     *
-     * @param connection The HTTP connection
-     * @return The response encoding as a string (taken from "Content-Type")
-     */
-    String getResponseEncoding(URLConnection connection) {
-
-        String charset = null;
-
-        String contentType = connection.getHeaderField("Content-Type");
-        if (contentType != null) {
-            for (String param : contentType.replace(" ", "").split(";")) {
-                if (param.startsWith("charset=")) {
-                    charset = param.split("=", 2)[1];
-                    break;
-                }
-            }
-        }
-        return charset;
     }
 
     private static void preconditionNotNull(Object what, String message) {
@@ -311,5 +299,9 @@ class HttpTemplate {
             return toTruncate;
         }
         return toTruncate.substring(0, maxLen);
+    }
+
+    String getResponseEncoding(HttpConnection connection) {
+        return connection.getResponseEncoding();
     }
 }
