@@ -207,4 +207,9 @@ public class ApacheConnection implements HttpConnection {
         builder.setSSLHostnameVerifier(hostnameVerifier);
     }
 
+    @Override
+    public HttpConnectionType getHttpConnectionType() {
+        return HttpConnectionType.apache;
+    }
+
 }

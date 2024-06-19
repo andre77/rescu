@@ -41,10 +41,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import oauth.signpost.OAuthConsumer;
+import oauth.signpost.exception.OAuthException;
+import oauth.signpost.http.HttpRequest;
 import si.mazi.rescu.clients.ApacheConnection;
+import si.mazi.rescu.clients.HttpConnection;
 import si.mazi.rescu.clients.HttpConnectionType;
 import si.mazi.rescu.clients.JavaConnection;
-import si.mazi.rescu.clients.HttpConnection;
+import si.mazi.rescu.oauth.RescuOAuthRequestAdapter;
 import si.mazi.rescu.utils.HttpUtils;
 
 /**
@@ -125,16 +128,17 @@ class HttpTemplate {
         HttpConnection connection = configureURLConnection(method, urlString, httpHeaders, contentLength);
 
         if (oAuthConsumer != null) {
-            throw new RuntimeException("OAuth not supported yet");
-            /*
-            HttpRequest request = new RescuOAuthRequestAdapter(connection, requestBody);
-
+            if (connection.getHttpConnectionType() != HttpConnectionType.java) {
+                throw new RuntimeException("OAuth not supported yet for " + connection.getHttpConnectionType());
+            }
+            JavaConnection jc = (JavaConnection) connection;
+            
+            HttpRequest request = new RescuOAuthRequestAdapter(jc.getHttpURLConnection(), requestBody);
             try {
                 oAuthConsumer.sign(request);
             } catch (OAuthException e) {
                 throw new RuntimeException("OAuth error", e);
             }
-            */
         }
 
         if (contentLength > 0) {

@@ -34,6 +34,9 @@ public class JavaConnection implements HttpConnection {
         return new JavaConnection(c);
     }
     
+    public HttpURLConnection getHttpURLConnection() {
+        return connection;
+    }
 
     @Override
     public String getHeaderField(String name) {
@@ -123,4 +126,8 @@ public class JavaConnection implements HttpConnection {
         httpsConnection.setHostnameVerifier(hostnameVerifier);
     }
 
+    @Override
+    public HttpConnectionType getHttpConnectionType() {
+        return HttpConnectionType.java;
+    }
 }

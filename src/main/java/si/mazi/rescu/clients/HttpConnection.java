@@ -14,6 +14,7 @@ import si.mazi.rescu.HttpMethod;
 
 public interface HttpConnection {
 
+    HttpConnectionType getHttpConnectionType();
     String getHeaderField(String name);
     String getRequestMethod();
     OutputStream getOutputStream() throws IOException;
