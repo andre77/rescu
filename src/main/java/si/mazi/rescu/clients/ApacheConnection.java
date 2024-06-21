@@ -72,8 +72,7 @@ public class ApacheConnection implements HttpConnection {
         if (proxy != null && proxy != Proxy.NO_PROXY) {
             InetSocketAddress address = (InetSocketAddress) proxy.address(); 
             HttpHost proxy = new HttpHost(address.getHostName(), address.getPort());
-            DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
-            clientBuilder.setRoutePlanner(routePlanner);
+            clientBuilder.setProxy(proxy);
         }
         
         CloseableHttpClient client = clientBuilder
