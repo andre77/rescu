@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.Proxy;
@@ -17,6 +18,7 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -32,6 +34,7 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 
 import si.mazi.rescu.HttpMethod;
 
@@ -64,9 +67,16 @@ public class ApacheConnection implements HttpConnection {
         if (executed) {
             return;
         }
+        HttpClientBuilder clientBuilder = builder
+                .setDefaultRequestConfig(requestConfig.build());
+        if (proxy != null && proxy != Proxy.NO_PROXY) {
+            InetSocketAddress address = (InetSocketAddress) proxy.address(); 
+            HttpHost proxy = new HttpHost(address.getHostName(), address.getPort());
+            DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
+            clientBuilder.setRoutePlanner(routePlanner);
+        }
         
-        CloseableHttpClient client = builder
-                .setDefaultRequestConfig(requestConfig.build())
+        CloseableHttpClient client = clientBuilder
                 .build();
         
         HttpRequestBase request = createRequest(method, url);
@@ -77,7 +87,6 @@ public class ApacheConnection implements HttpConnection {
             if (entity == null) {
                 entity = new ByteArrayEntity(out.toByteArray());
                 req.setEntity(entity);
-                headers.remove("Content-Length");   // need to drop this header here, otherwise we get "Content-Length header already present"
             }
         }
         headers.forEach((name, value) -> request.addHeader(name, value));
@@ -173,6 +182,9 @@ public class ApacheConnection implements HttpConnection {
 
     @Override
     public void addHeader(String key, String value) {
+        if ("Content-Length".equals(key)) { // need to drop this header here, otherwise we get "Content-Length header already present"
+            return;
+        }
         headers.put(key, value);
     }
 
