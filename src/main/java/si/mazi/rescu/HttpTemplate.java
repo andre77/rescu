@@ -22,6 +22,8 @@
  */
 package si.mazi.rescu;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import oauth.signpost.OAuthConsumer;
 import oauth.signpost.exception.OAuthException;
 import oauth.signpost.http.HttpRequest;
@@ -93,11 +95,11 @@ class HttpTemplate {
         this.hostnameVerifier = hostnameVerifier;
         this.oAuthConsumer = oAuthConsumer;
 
-        defaultHttpHeaders.put("Accept-Charset", CHARSET_UTF_8);
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT_CHARSET, CHARSET_UTF_8);
         // defaultHttpHeaders.put("Content-Type", "application/x-www-form-urlencoded");
-        defaultHttpHeaders.put("Accept", "application/json");
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
         // User agent provides statistics for servers, but some use it for content negotiation so fake good agents
-        defaultHttpHeaders.put("User-Agent", "ResCU JDK/6 AppleWebKit/535.7 Chrome/16.0.912.36 Safari/535.7"); // custom User-Agent
+        defaultHttpHeaders.put(HttpHeaders.USER_AGENT, "ResCU JDK/6 AppleWebKit/535.7 Chrome/16.0.912.36 Safari/535.7"); // custom User-Agent
 
         if (proxyHost == null || proxyPort == null) {
             proxy = Proxy.NO_PROXY;
@@ -195,7 +197,7 @@ class HttpTemplate {
             connection.setDoOutput(true);
             connection.setDoInput(true);
         }
-        connection.setRequestProperty("Content-Length", Integer.toString(contentLength));
+        connection.setRequestProperty(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
 
         return connection;
     }
@@ -266,7 +268,7 @@ class HttpTemplate {
     }
 
     boolean izGzipped(HttpURLConnection connection) {
-        return "gzip".equalsIgnoreCase(connection.getHeaderField("Content-Encoding"));
+        return "gzip".equalsIgnoreCase(connection.getHeaderField(HttpHeaders.CONTENT_ENCODING));
     }
 
     /**
@@ -279,7 +281,7 @@ class HttpTemplate {
 
         String charset = null;
 
-        String contentType = connection.getHeaderField("Content-Type");
+        String contentType = connection.getHeaderField(HttpHeaders.CONTENT_TYPE);
         if (contentType != null) {
             for (String param : contentType.replace(" ", "").split(";")) {
                 if (param.startsWith("charset=")) {
