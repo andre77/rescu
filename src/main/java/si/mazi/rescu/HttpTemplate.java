@@ -98,6 +98,7 @@ class HttpTemplate {
         defaultHttpHeaders.put(HttpHeaders.ACCEPT_CHARSET, CHARSET_UTF_8);
         // defaultHttpHeaders.put("Content-Type", "application/x-www-form-urlencoded");
         defaultHttpHeaders.put(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT_ENCODING, "gzip");
         // User agent provides statistics for servers, but some use it for content negotiation so fake good agents
         defaultHttpHeaders.put(HttpHeaders.USER_AGENT, "ResCU JDK/6 AppleWebKit/535.7 Chrome/16.0.912.36 Safari/535.7"); // custom User-Agent
 
