@@ -22,6 +22,20 @@
  */
 package si.mazi.rescu;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import oauth.signpost.OAuthConsumer;
+import oauth.signpost.exception.OAuthException;
+import oauth.signpost.http.HttpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import si.mazi.rescu.oauth.RescuOAuthRequestAdapter;
+import si.mazi.rescu.utils.HttpUtils;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -98,11 +112,12 @@ class HttpTemplate {
         this.oAuthConsumer = oAuthConsumer;
         this.connectionType = connectionType;
 
-        defaultHttpHeaders.put("Accept-Charset", CHARSET_UTF_8);
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT_CHARSET, CHARSET_UTF_8);
         // defaultHttpHeaders.put("Content-Type", "application/x-www-form-urlencoded");
-        defaultHttpHeaders.put("Accept", "application/json");
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+        defaultHttpHeaders.put(HttpHeaders.ACCEPT_ENCODING, "gzip");
         // User agent provides statistics for servers, but some use it for content negotiation so fake good agents
-        defaultHttpHeaders.put("User-Agent", "ResCU JDK/6 AppleWebKit/535.7 Chrome/16.0.912.36 Safari/535.7"); // custom User-Agent
+        defaultHttpHeaders.put(HttpHeaders.USER_AGENT, "ResCU JDK/6 AppleWebKit/535.7 Chrome/16.0.912.36 Safari/535.7"); // custom User-Agent
 
         if (proxyHost == null || proxyPort == null) {
             proxy = Proxy.NO_PROXY;
@@ -204,7 +219,7 @@ class HttpTemplate {
             connection.setDoOutput(true);
             connection.setDoInput(true);
         }
-        connection.addHeader("Content-Length", Integer.toString(contentLength));
+        connection.setRequestProperty(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
 
         return connection;
     }
@@ -279,8 +294,8 @@ class HttpTemplate {
         }
     }
 
-    boolean izGzipped(HttpConnection connection) {
-        return "gzip".equalsIgnoreCase(connection.getHeaderField("Content-Encoding"));
+    boolean izGzipped(HttpURLConnection connection) {
+        return "gzip".equalsIgnoreCase(connection.getHeaderField(HttpHeaders.CONTENT_ENCODING));
     }
 
     private static void preconditionNotNull(Object what, String message) {
