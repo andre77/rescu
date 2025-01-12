@@ -219,8 +219,7 @@ class HttpTemplate {
             connection.setDoOutput(true);
             connection.setDoInput(true);
         }
-        connection.setRequestProperty(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
-
+        connection.addHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
         return connection;
     }
 
@@ -294,7 +293,7 @@ class HttpTemplate {
         }
     }
 
-    boolean izGzipped(HttpURLConnection connection) {
+    boolean izGzipped(HttpConnection connection) {
         return "gzip".equalsIgnoreCase(connection.getHeaderField(HttpHeaders.CONTENT_ENCODING));
     }
 
