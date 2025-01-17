@@ -99,8 +99,8 @@ class HttpTemplate {
     private final HttpConnectionType connectionType;
 
     HttpTemplate(int readTimeout, String proxyHost, Integer proxyPort, Proxy.Type proxyType,
-                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer, HttpConnectionType client) {
-      this(0, readTimeout, proxyHost, proxyPort, proxyType, sslSocketFactory, hostnameVerifier, oAuthConsumer, client);
+                 SSLSocketFactory sslSocketFactory, HostnameVerifier hostnameVerifier, OAuthConsumer oAuthConsumer, HttpConnectionType connectionType) {
+      this(0, readTimeout, proxyHost, proxyPort, proxyType, sslSocketFactory, hostnameVerifier, oAuthConsumer, connectionType);
     }
 
     HttpTemplate(int connTimeout, int readTimeout, String proxyHost, Integer proxyPort, Proxy.Type proxyType,
@@ -210,22 +210,17 @@ class HttpTemplate {
         headerKeyValues.putAll(httpHeaders);
 
         for (Map.Entry<String, String> entry : headerKeyValues.entrySet()) {
-            connection.addHeader(entry.getKey(), entry.getValue());
+            connection.setHeader(entry.getKey(), entry.getValue());
             log.trace("Header request property: key='{}', value='{}'", entry.getKey(), entry.getValue());
         }
 
         // Perform additional configuration for POST
-        if (contentLength > 0) {
-            connection.setDoOutput(true);
-            connection.setDoInput(true);
-        }
-        connection.addHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
+        connection.doFinalConfig(contentLength);
+        connection.setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(contentLength));
         return connection;
     }
 
     protected HttpConnection getRescuHttpURLConnection(String urlString) throws IOException {
-        
-        //RescuHttpURLConnection connection = (RescuHttpURLConnection) new URL(urlString).openConnection(proxy);
         
         HttpConnection connection = null;
         switch (connectionType) {
@@ -241,7 +236,7 @@ class HttpTemplate {
           connection.setConnectTimeout(connTimeout);
         }
 
-        if (connection.ssl()) {
+        if (connection.isSsl()) {
             if (sslSocketFactory != null) {
                 connection.setSSLSocketFactory(sslSocketFactory);
             }
@@ -296,6 +291,25 @@ class HttpTemplate {
     boolean izGzipped(HttpConnection connection) {
         return "gzip".equalsIgnoreCase(connection.getHeaderField(HttpHeaders.CONTENT_ENCODING));
     }
+    
+    /**
+     * Determine the response encoding if specified
+     * @return The response encoding as a string (taken from "Content-Type")
+     */
+    String getResponseEncoding(HttpConnection connection) {
+
+        String charset = null;
+        String contentType = connection.getHeaderField(HttpHeaders.CONTENT_TYPE);
+        if (contentType != null) {
+            for (String param : contentType.replace(" ", "").split(";")) {
+                if (param.startsWith("charset=")) {
+                    charset = param.split("=", 2)[1];
+                    break;
+                }
+            }
+        }
+        return charset;
+    }
 
     private static void preconditionNotNull(Object what, String message) {
         if (what == null) {
@@ -319,7 +333,4 @@ class HttpTemplate {
         return toTruncate.substring(0, maxLen);
     }
 
-    String getResponseEncoding(HttpConnection connection) {
-        return connection.getResponseEncoding();
-    }
 }

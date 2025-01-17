@@ -21,11 +21,7 @@
  */
 package si.mazi.rescu;
 
-import org.testng.annotations.Test;
-
-import si.mazi.rescu.clients.HttpConnectionType;
-import si.mazi.rescu.clients.JavaConnection;
-import si.mazi.rescu.clients.HttpConnection;
+import static org.testng.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,11 +30,14 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.testng.Assert.assertEquals;
+import org.testng.annotations.Test;
+
+import si.mazi.rescu.clients.HttpConnection;
+import si.mazi.rescu.clients.HttpConnectionType;
+import si.mazi.rescu.clients.JavaConnection;
 
 
 /**

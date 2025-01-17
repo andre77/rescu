@@ -79,18 +79,16 @@ public class JavaConnection implements HttpConnection {
     }
 
     @Override
-    public void addHeader(String key, String value) {
+    public void setHeader(String key, String value) {
         connection.setRequestProperty(key, value);
     }
-
+    
     @Override
-    public void setDoOutput(boolean dooutput) {
-        connection.setDoOutput(dooutput);
-    }
-
-    @Override
-    public void setDoInput(boolean doinput) {
-        connection.setDoInput(doinput);
+    public void doFinalConfig(int contentLength) {
+        if (contentLength > 0) {
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+        }
     }
 
     @Override
@@ -110,7 +108,7 @@ public class JavaConnection implements HttpConnection {
     }
 
     @Override
-    public boolean ssl() {
+    public boolean isSsl() {
         return connection instanceof HttpsURLConnection;
     }
 

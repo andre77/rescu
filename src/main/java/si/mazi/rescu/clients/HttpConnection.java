@@ -23,34 +23,14 @@ public interface HttpConnection {
     InputStream getInputStream() throws IOException;
     InputStream getErrorStream() throws IOException;
     void setRequestMethod(HttpMethod method) throws ProtocolException;
-    void addHeader(String key, String value);
-    void setDoOutput(boolean b);
-    void setDoInput(boolean b);
+    void setHeader(String key, String value);
+    void doFinalConfig(int contentLength);
     void setReadTimeout(int readTimeout);
     void setConnectTimeout(int connTimeout);
     
-    boolean ssl();
+    boolean isSsl();
+    /** TODO: should be made javax.net-independent */
     void setSSLSocketFactory(SSLSocketFactory sslSocketFactory);
     void setHostnameVerifier(HostnameVerifier hostnameVerifier);
     
-    /**
-     * Determine the response encoding if specified
-     * @return The response encoding as a string (taken from "Content-Type")
-     */
-    default String getResponseEncoding() {
-
-        String charset = null;
-
-        String contentType = getHeaderField("Content-Type");
-        if (contentType != null) {
-            for (String param : contentType.replace(" ", "").split(";")) {
-                if (param.startsWith("charset=")) {
-                    charset = param.split("=", 2)[1];
-                    break;
-                }
-            }
-        }
-        return charset;
-    }
-
 }

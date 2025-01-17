@@ -34,10 +34,14 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import si.mazi.rescu.HttpMethod;
 
 public class ApacheConnection implements HttpConnection {
+    
+    private static final Logger log = LoggerFactory.getLogger(ApacheConnection.class);
     
     private final String url;
     private final Proxy proxy;
@@ -87,7 +91,7 @@ public class ApacheConnection implements HttpConnection {
                 req.setEntity(entity);
             }
         }
-        headers.forEach((name, value) -> request.addHeader(name, value));
+        headers.forEach(request::addHeader);
         try {
             response = client.execute(request);
             
@@ -141,19 +145,15 @@ public class ApacheConnection implements HttpConnection {
     public InputStream getInputStream() throws IOException {
         return response.getEntity().getContent();
     }
+    
     @Override
     public InputStream getErrorStream() throws IOException {
         return getInputStream();
     }
     
     @Override
-    public void setDoOutput(boolean dooutput) {
-     // @TODO ???
-    }
-
-    @Override
-    public void setDoInput(boolean doinput) {
-     // @TODO ???
+    public void doFinalConfig(int contentLength) {
+        // TODO ???
     }
     
     @Override
@@ -179,37 +179,40 @@ public class ApacheConnection implements HttpConnection {
     }
 
     @Override
-    public void addHeader(String key, String value) {
+    public void setHeader(String key, String value) {
         if ("Content-Length".equals(key)) { // need to drop this header here, otherwise we get "Content-Length header already present"
+            log.warn("'Content-Length' header already present, ignoring the explicitly set value: '{}'.", value);
             return;
         }
         headers.put(key, value);
     }
 
-    @Override
     /**
-     * @param timeout an {@code int} that specifies the timeout value to be used in milliseconds
+     * @param readTimeout an {@code int} that specifies the timeout value to be used in milliseconds
      */
+    @Override
     public void setReadTimeout(int readTimeout) {
-     // @TODO ???
+        requestConfig.setSocketTimeout(readTimeout);
     }
 
-    @Override
     /**
-     * @param timeout an {@code int} that specifies the connect timeout value in milliseconds
+     * @param connTimeout an {@code int} that specifies the connect timeout value in milliseconds
      */
+    @Override
     public void setConnectTimeout(int connTimeout) {
         requestConfig.setConnectTimeout(connTimeout);
     }
 
     @Override
-    public boolean ssl() {
+    public boolean isSsl() {
         return url.startsWith("https");
     }
 
     @Override
     public void setSSLSocketFactory(SSLSocketFactory sslSocketFactory) {
-            // @TODO ???
+        if (sslSocketFactory != null) {
+            throw new UnsupportedOperationException("Setting a SSLSocketFactory not supported for Apache client");
+        }
     }
 
     @Override

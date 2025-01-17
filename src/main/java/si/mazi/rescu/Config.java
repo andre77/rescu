@@ -59,7 +59,7 @@ final class Config {
 
     private static final String WRAP_UNEXPECTED_EXCEPTIONS = "rescu.http.wrapUnexpectedExceptions";
 
-    private static final String CONNECTION_TYPE = "rescu.http.connection_type";
+    private static final String CONNECTION_TYPE = "rescu.http.connectionType";
     
     private static final int httpConnTimeout;
 
