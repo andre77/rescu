@@ -22,20 +22,6 @@
  */
 package si.mazi.rescu;
 
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.MediaType;
-import oauth.signpost.OAuthConsumer;
-import oauth.signpost.exception.OAuthException;
-import oauth.signpost.http.HttpRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import si.mazi.rescu.oauth.RescuOAuthRequestAdapter;
-import si.mazi.rescu.utils.HttpUtils;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSocketFactory;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +40,8 @@ import javax.net.ssl.SSLSocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import oauth.signpost.OAuthConsumer;
 import oauth.signpost.exception.OAuthException;
 import oauth.signpost.http.HttpRequest;
