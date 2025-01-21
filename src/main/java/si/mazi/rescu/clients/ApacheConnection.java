@@ -19,6 +19,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -49,7 +50,6 @@ public class ApacheConnection implements HttpConnection {
     private final RequestConfig.Builder requestConfig = RequestConfig.custom();
             
     private boolean executed = false;
-    private CloseableHttpResponse res;
     private HttpMethod method = HttpMethod.GET;
     private ByteArrayOutputStream out;
     private final Map<String, String> headers = new HashMap<>();
@@ -66,7 +66,7 @@ public class ApacheConnection implements HttpConnection {
         return new ApacheConnection(url, proxy);
     }
     
-    private void exec() {
+    private void exec() throws ClientProtocolException, IOException {
         if (executed) {
             return;
         }
@@ -77,28 +77,22 @@ public class ApacheConnection implements HttpConnection {
             HttpHost proxy = new HttpHost(address.getHostName(), address.getPort());
             clientBuilder.setProxy(proxy);
         }
+        try ( CloseableHttpClient client = clientBuilder.build() ) {
         
-        CloseableHttpClient client = clientBuilder
-                .build();
-        
-        HttpRequestBase request = createRequest(method, url);
-        
-        if (request instanceof HttpEntityEnclosingRequestBase && out != null) {
-            HttpEntityEnclosingRequestBase req = (HttpEntityEnclosingRequestBase) request;
-            HttpEntity entity = req.getEntity();
-            if (entity == null) {
-                entity = new ByteArrayEntity(out.toByteArray());
-                req.setEntity(entity);
-            }
-        }
-        headers.forEach(request::addHeader);
-        try {
-            response = client.execute(request);
+            HttpRequestBase request = createRequest(method, url);
             
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+            if (request instanceof HttpEntityEnclosingRequestBase && out != null) {
+                HttpEntityEnclosingRequestBase req = (HttpEntityEnclosingRequestBase) request;
+                HttpEntity entity = req.getEntity();
+                if (entity == null) {
+                    entity = new ByteArrayEntity(out.toByteArray());
+                    req.setEntity(entity);
+                }
+            }
+            headers.forEach(request::addHeader);
+            response = client.execute(request);
+            executed = true;
         }
-        executed = true;
     }
 
     private static HttpRequestBase createRequest(HttpMethod method, String url) {
@@ -116,11 +110,10 @@ public class ApacheConnection implements HttpConnection {
 
     @Override
     public String getHeaderField(String name) {
-        try {
-            return res.getFirstHeader(name).getValue();
-        } catch (Exception e) {
-            return null;
+        if (!executed) {
+            throw new RuntimeException("Request is not executed yet.");
         }
+        return response.getFirstHeader(name).getValue();
     }
     
     @Override
@@ -143,17 +136,13 @@ public class ApacheConnection implements HttpConnection {
     
     @Override
     public InputStream getInputStream() throws IOException {
+        exec();
         return response.getEntity().getContent();
     }
     
     @Override
     public InputStream getErrorStream() throws IOException {
         return getInputStream();
-    }
-    
-    @Override
-    public void doFinalConfig(int contentLength) {
-        // TODO ???
     }
     
     @Override

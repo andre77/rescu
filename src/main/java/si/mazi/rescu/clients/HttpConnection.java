@@ -24,7 +24,7 @@ public interface HttpConnection {
     InputStream getErrorStream() throws IOException;
     void setRequestMethod(HttpMethod method) throws ProtocolException;
     void setHeader(String key, String value);
-    void doFinalConfig(int contentLength);
+    default void doFinalConfig(int contentLength) {}
     void setReadTimeout(int readTimeout);
     void setConnectTimeout(int connTimeout);
     
